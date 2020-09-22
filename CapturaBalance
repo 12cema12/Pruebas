@@ -1,0 +1,385 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Aug  5 12:52:19 2020
+
+@author: CME
+Proposito
+La idea es capturar los valores de la unidad de balance para poder explotra en un unico dataset.
+Barremos los ficheros incialmente y luego solo los que cambien por fecha desde la ultima salvada.
+Para tener el ultimo disponible capturamos los valroes del repositorio sin fecha. son los ultimos a la fecha que se indica
+
+Pendiente
+se tienen que meter los valores de mercado de la unidad de red. barrer los datos de Eric
+traer la fecha en el fichero.
+"""
+
+# importacion de los ficheros de trabajo
+import numpy as np
+import pandas as pd 
+import matplotlib.pyplot as plt
+import seaborn as sns
+from functools import reduce
+pathOUTPUT = 'C:/Users/00022254/OneDrive - GAS Natural Informática, S.A/00 Riesgos/04 Repositorio/'
+pathIndex='C:/Users/00022254/OneDrive - GAS Natural Informática, S.A/02 Programas/01 ProyectoPython/01 ObtenerDatosHojaGases/00 Master/'
+nameIndex='MasterBalance.xlsx'
+itera=['20200916']
+
+
+#Creamos el fichero dummy para hacer la matriz de salida cuadrada
+INDEX2=pd.date_range("1992-01-01","2030-01-01",freq="MS")
+value2=INDEX2.tolist()
+INDEX2=pd.DataFrame()
+INDEX2["Fecha"]=value2
+
+
+
+for j in range(0,len(itera)):
+#Definicion de Rutas para almacenar
+    pathHUBS='R:/HUBS/'
+    nameHUBSF="HUBS"+ itera[j] +'.xls'
+    nameHUBSH='HUBSH.xls'
+    
+    pathCOAL='R:/COAL/'
+    nameCOALF="COAL"+ itera[j] +'.xls'
+    nameCOALH='COALH.xls'
+    pathPRD='R:/PRD/'
+    namePRDF="PRD"+ itera[j] +'.xls'
+    namePRDH='PRDH.xls'
+    pathFX='R:/FX/'
+    nameFXF="FX"+ itera[j] +'.xls'
+    nameFXH='FXH.xls'
+    pathCO2='R:/CO2/'
+    nameCO2F='CO2 '+itera[j]+'.xls'
+    nameCO2H='CO2H.xls'
+    pathPool='R:/POOL/'
+    namePoolF='Pool'+itera[j]+'.xls'
+    namePoolH='Poolh.xls'
+    pathPOWER='R:/POWER/'
+    #namePoolF='POWER.xls'
+    pathBrentICE='R:/HUBS/'
+    nameBrentICE='BrentICE'+itera[j]+'.xls'
+    nameBrentICE='BRENTH.xls'
+   
+
+
+    # no hay el POWERH es el valor del pool'
+    
+    ###################################################################
+    ##Barremos fecha para ver que esta ok ###############
+    #####################################################################
+    
+    HUBSISOH=pd.read_excel(pathHUBS + nameHUBSH,header=None,usecols = "B",nrows=1, skiprows=2,index_col=None)
+    HUBSISOF=pd.read_excel(pathHUBS + nameHUBSF,header=None,usecols = "B",nrows=1, skiprows=2,index_col=None)
+    COALISOH=pd.read_excel(pathCOAL + nameCOALH,header=None,usecols = "B",nrows=1, skiprows=2,index_col=None)
+    COALISOF=pd.read_excel(pathCOAL + nameCOALF,header=None,usecols = "B",nrows=1, skiprows=2,index_col=None)
+    PRDISOH=pd.read_excel(pathPRD + namePRDH,header=None,usecols = "B",nrows=1, skiprows=2,index_col=None)
+    PRDISOF=pd.read_excel(pathPRD + namePRDF,header=None,usecols = "B",nrows=1, skiprows=2,index_col=None)
+    CO2ISOH=pd.read_excel(pathCO2 + nameCO2H,header=None,usecols = "B",nrows=1, skiprows=2,index_col=None)
+    CO2ISOF=pd.read_excel(pathCO2 + nameCO2F,header=None,usecols = "B",nrows=1, skiprows=2,index_col=None)
+   
+    PoolISOF=pd.read_excel(pathPool + namePoolF,header=None,usecols = "B",nrows=1, skiprows=2,index_col=None)
+    
+    ValoresF=pd.concat([CO2ISOF, HUBSISOF,COALISOF,PRDISOF,PoolISOF])
+    ValoresH=pd.concat([CO2ISOH, HUBSISOH,COALISOH,PRDISOH])
+    len(np.unique(ValoresH.count))==1
+    len(np.unique(ValoresF.count))==1
+    
+    
+    #########
+    ## Cargamos los index del Master Balance
+    #########
+    
+    Index=pd.read_excel(pathIndex + nameIndex,skiprows=3)#Obtenemos desde los nombres nativos la codificacion de trabajo
+    
+    
+    #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    #!!!Primero barremos haciendo un análisis de cada uno de los valores. Cada indice tiene una estrutura diferente.!!!!!
+    #!!Esto me da el valor de referencia ultimo a validar                                                           !!!!!
+    #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    
+    #barremos los indices de Transaciones
+    #fichero HUBS
+    #Valores Historicos HUBSH
+    HUBSH=pd.read_excel(pathHUBS + nameHUBSH,header=0,skiprows=5)
+    #HUBSISOH.rename(columns={'1':'FechaISO'},inplace=True)
+    HUBSH.rename(columns={'Hub':'Fecha'},inplace=True)
+    HUBSH=HUBSH.drop([0,1,2],axis=0)#Arreglo filas
+    HUBSH.Fecha = pd.to_datetime(HUBSH.Fecha)#Convierto en Fecha
+    
+    
+    #Arreglamos el DataSet para dejarlo limpio
+    #fichero HUBSH
+    HUBSH=HUBSH.rename(
+            columns={'HH_PM_H':"NHH101", 'NBP_H':"NBP101", 'ZEE_H':"null", 'AGQ_H':"AGQ101", 'TNZ_H':"TNZ101", 'Unnamed: 6':"null",
+           'Unnamed: 7':"null", 'Unnamed: 8':"null", 'HH_CL_H':"NHH102", 'HH_L3D_H':"NHH103", 'NBP_LD':"null", 'TTF_H':"TTF101",
+           'JKM':"JKM101", 'NCG':"NCG101", 'ZEE_PM':"ZEE101", 'TTF_Q+1_113':"null", 'PSV_H':"PSV101", 'SWE':"null", 'PEG_H':"PEG101",
+           'TTF_Gas Year':"null", 'NBP_PM':"null", 'NBP_ESGM':"NBP102",'NBP_ICE':"null", 'PVB_H':"PVB102", 'PVB_MIBGAS':"null",
+           'ZEE_ESGM':"null"})
+    HUBSH=HUBSH.drop(["null"],axis=1)#Arreglo columnas
+    
+           
+    HUBSH=HUBSH.dropna(subset=["Fecha"])
+    
+    
+    
+    #fichero HUBSF
+    HUBSF=pd.read_excel(pathHUBS + nameHUBSF,header=0,skiprows=6)
+    HUBSF=HUBSF.drop([0,1],axis=0)#Arreglo filas
+    HUBSF.rename(columns={'Hub':'Fecha'},inplace=True)
+    HUBSF = HUBSF.dropna(subset=['Fecha'])   
+    HUBSF.Fecha = pd.to_datetime(HUBSF.Fecha)#Convierto en Fecha
+    
+    HUBSF=HUBSF.rename(
+            columns={'HH_PM':"NHH101", 'AGQ':"AGQ101", 'TNZ':"TNZ101", 'TTF':"TTF101" ,
+           'JKM':"JKM101", 'NCG_ICE':"NCG101", 'TTF_Q+1_113':"null", 'PSV':"PSV101", 'SWE':"null", 'PEG':"PEG101",
+           'TTF_Gas Year':"null", 'NBP_PM':"null", 'NBP_ESGM':"NBP101", 'PVB':"PVB102", 'ZEE_ESGM':"ZEE101",
+           'NCG':"null", 'TTF_Gas Year':"null", 'GASPOOL':"null", 'CZECH':"null", "NBP_ICE":"null",'GASPOOL_ICE':"null"})
+    HUBSF=HUBSF.drop(["null"],axis=1)#Arreglo columnas
+    
+    
+    
+    HUBS=pd.concat([HUBSH,HUBSF],axis=0,sort=False)
+    #test para ver si las matrices origen son cuadradas
+    row1 = HUBSF.shape[0]
+    row2 = HUBSH.shape[0]
+    row3= HUBS.shape[0]
+    row3==row1+row2
+    if row3 == "False":
+        print ('Descuadre de HUBS :')
+    ############
+    HUBS=pd.merge(HUBS,INDEX2, sort=True, on="Fecha", how="outer")
+    ## Para quitar los duplicados
+    HUBS["count"]=HUBS.groupby(["Fecha"]).cumcount()
+    HUBS=HUBS[HUBS["count"]==0]
+    HUBS=HUBS.drop(["count"],axis=1)
+    
+    
+    #Arreglamos el DataSet para dejarlo limpio
+    
+    
+    #fichero COAL
+    #Valores Historicos
+    COALH=pd.read_excel(pathCOAL + nameCOALH,header=0,skiprows=6)
+    #Arreglamos el DataSet para dejarlo limpio
+    COALH=COALH.drop([0],axis=0)#Arreglo filas
+    COALH=COALH.drop(["Unnamed: 3"],axis=1)#Arreglo columnas
+    COALH.rename(columns={'Unnamed: 0':'Fecha'},inplace=True)
+    COALH = COALH.dropna(subset=['Fecha'])
+    COALH.Fecha = pd.to_datetime(COALH.Fecha)
+    COALH=COALH.rename(
+            columns={'COAL_CIF_NWE_H':"COA101", 'COAL_FOB_RBCT_H':"COA103"})
+    #Valores Futuros
+    COALF=pd.read_excel(pathCOAL + nameCOALF,header=0,skiprows=6)
+    COALF=COALF.drop([0],axis=0)#Arreglo filas
+    COALF.rename(columns={'Unnamed: 0':'Fecha'},inplace=True)
+    COALF = COALF.dropna(subset=['Fecha'])
+    COALF.Fecha = pd.to_datetime(COALF.Fecha)
+    COALF=COALF.rename(
+            columns={'API2_CIF_ARA':"COA101", 'API4_FOB_RBCT':"COA103",'Unnamed: 3':"null", 'Unnamed: 4':"null", 'Unnamed: 5':"null"})
+    COALF=COALF.drop(["null"],axis=1)
+    #COALF=COALF.drop("null",axis=1)
+    COAL=pd.concat([COALH,COALF],axis=0,sort=False)
+    #test para ver si las matrices origen son cuadradas
+    row1 = COALF.shape[0]
+    row2 = COALH.shape[0]
+    row3= COAL.shape[0]
+    row3==row1+row2
+    if row3 == "False":
+        print ('Descuadre de COAL :')
+    ############
+    COAL=pd.merge(COAL,INDEX2, sort=True, on="Fecha", how="outer")
+    ## Para quitar los duplicados
+    COAL["count"]=COAL.groupby(["Fecha"]).cumcount()
+    COAL=COAL[COAL["count"]==0]
+    COAL=COAL.drop(["count"],axis=1)
+    
+    
+    #fichero PRD
+    #Valores Historicos
+    PRDH=pd.read_excel(pathPRD + namePRDH,header=0,skiprows=6)
+    #Arreglamos el DataSet para dejarlo limpio
+    PRDH=PRDH.drop([0],axis=0)#Arreglo filas
+    PRDH=PRDH.drop(["Unnamed: 1","Unnamed: 22","Unnamed: 28"],axis=1)#Arreglo columnas
+    PRDH.rename(columns={'Unnamed: 0':'Fecha'},inplace=True)
+    PRDH = PRDH.dropna(subset=['Fecha'])
+    PRDH.Fecha = pd.to_datetime(PRDH.Fecha)
+    PRDH=PRDH.rename(
+            columns={'BRT_SPT_H':"BRT101",'WTI_SPT_H':"WTI101",
+                     'G02_CIF_MED_H':"CMD101", 'F01_CIF_MED_H':"CMD102", 'F35_CIF_MED_H':"CMD103",'G01_CIF_MED_H':"CMD104",
+                     'G02_CIF_NWE_H':"CNW101", 'F01_CIF_NWE_H':"CNW102", 'F35_CIF_NWE_H':"CNW103",'G01_CIF_NWE_H':"CNW104",
+                     'G02_FOB_MED_H':"FMD101", 'F01_FOB_MED_H':"FMD102", 'F35_FOB_MED_H':"FMD103",'G01_FOB_MED_H':"FMD104",
+                     'G02_FOB_ROT_H':"FRT101", 'F01_FOB_ROT_H':"FRT102", 'F35_FOB_ROT_H':"FRT103",'G01_FOB_ROT_H':"FRT104",
+                     'G02_FOB_NWE_H':"FNW101", 'F01_FOB_NWE_H':"FNW102", 'F35_FOB_NWE_H':"FNW103",'G01_FOB_NWE_H':"FNW104",
+                     'G01_WBN_H':"IWD101",'F01_WBN_H':"IWD102",'F35_WBN_H':"IWD103",'BRENT_ICE':"null",
+                     'No6 0.3%S LP NY':"null",'No6 0.7%S Max NY':"null",'LST Propano':"null",'No6 3%S Resid':"null",
+                     'FO1%Spain':"null",'G01_WBNC_H':"null",'F01_WBNC_H':"null",'F35_WBNC_H':"null",
+                     'BRENT_ICE_EUR':"BRT104"})
+    PRDH=PRDH.drop("null", axis=1) 
+       
+    #Valores Futuros
+    PRDF=pd.read_excel(pathPRD + namePRDF,header=0,skiprows=6)
+    PRDF=PRDF.drop([0],axis=0)#Arreglo filas
+    PRDF=PRDF.drop(["Unnamed: 1","Unnamed: 22","Unnamed: 28"],axis=1)#Arreglo columnas
+    PRDF.rename(columns={'Unnamed: 0':'Fecha'},inplace=True)
+    PRDF = PRDF.dropna(subset=['Fecha'])
+    PRDF=PRDF.rename(
+            columns={'BRT_SPT':"BRT101",'WTI Spot':"WTI101",
+                     'G02_CIF_MED':"CMD101", 'F01_CIF_MED':"CMD102", 'F35_CIF_MED':"CMD103",'G01_CIF_MED':"CMD104",
+                     'G02_CIF_NWE':"CNW101", 'F01_CIF_NWE':"CNW102", 'F35_CIF_NWE':"CNW103",'G01_CIF_NWE':"CNW104",
+                     'G02_FOB_MED':"FMD101", 'F01_FOB_MED':"FMD102", 'F35_FOB_MED':"FMD103",'G01_FOB_MED':"FMD104",
+                     'G02_FOB_ROT':"FRT101", 'F01_FOB_ROT':"FRT102", 'F35_FOB_ROT':"FRT103",'G01_FOB_ROT':"FRT104",
+                     'G02_FOB_NWE':"FNW101", 'F01_FOB_NWE':"FNW102", 'F35_FOB_NWE':"FNW103",'G01_FOB_NWE':"FNW104",
+                     'G01_WBN':"IWD101",'F01_WBN':"IWD102",'F35_WBN':"IWD103",'BRENT_ICE':"BRT105",
+                     'No6 0.3%S LP NY':"null",'No6 0.7%S Max NY':"null",'LST Propano':"null",'No6 3%S Resid':"null",
+                     'FO1%Spain':"null",'G01_WBNC':"null",
+                     'F01_WBNC':"null",'F35_WBNC':"null",'BRENT_ICE_EUR':"BRT104"})
+    PRDF=PRDF.drop("null",axis=1)
+    PRDF.Fecha = pd.to_datetime(PRDF.Fecha)
+    PRD=pd.concat([PRDH,PRDF],axis=0,sort=False)
+    #test para ver si las matrices origen son cuadradas
+    row1 = PRDF.shape[0]
+    row2 = PRDH.shape[0]
+    row3= PRD.shape[0]
+    row3==row1+row2
+    if row3 == "False":
+        print ('Descuadre de PRD :')
+    ############
+    PRD=pd.merge(PRD,INDEX2, sort=True, on="Fecha", how="outer")
+    ## Para quitar los duplicados
+    PRD["count"]=PRD.groupby(["Fecha"]).cumcount()
+    PRD=PRD[PRD["count"]==0]
+    PRD=PRD.drop(["count"],axis=1)
+    
+    
+    #fichero FX
+    #Valores Historicos
+    FXH=pd.read_excel(pathFX + nameFXH,header=0,skiprows=5)
+    #Arreglamos el DataSet para dejarlo limpio
+    FXH=FXH.drop([0],axis=0)#Arreglo filas
+    FXH.rename(columns={'Unnamed: 0':'Fecha'},inplace=True)
+    FXH = FXH.dropna(subset=['Fecha'])
+    FXH.Fecha = pd.to_datetime(FXH.Fecha)
+    FXH=FXH.drop(['IPC_base_2001','IPC_base_1992'], axis=1)
+    FXH=FXH.rename(columns={"FX_USD_EUR_H":"FXT101",'FX_USD_GBP_H':"FXT102",'FX_USD_GBP_LD':"null"})
+    #Valores Futuros
+    FXF=pd.read_excel(pathFX + nameFXF,header=0,skiprows=5)
+    FXF.rename(columns={'Unnamed: 0':'Fecha'},inplace=True)
+    FXF =FXF.dropna(subset=['Fecha'])
+    FXF.Fecha = pd.to_datetime(FXF.Fecha)
+    FXF=FXF.drop(['IPC_base_2001','IPC_base_1992'], axis=1) #elimino lo que no se usa
+    FXF=FXF.rename(columns={"USD_EUR_F":"FXT101",'USD_GBP_F':"FXT102",'BRL_USD_F':"null"}) #codifico los nombres
+    FX= pd.concat([FXH,FXF],axis=0, sort=False)
+    #test para ver si las matrices origen son cuadradas
+    row1 = FXF.shape[0]
+    row2 = FXH.shape[0]
+    row3= FX.shape[0]
+    row3==row1+row2
+    if row3 == "False":
+        print ('Descuadre de FX :')
+    ############
+    FX=pd.merge(FX,INDEX2, on="Fecha", how="outer", sort=True)
+    FX["count"]=FX.groupby(["Fecha"]).cumcount()
+    FX=FX[FX["count"]==0]
+    FX=FX.drop(["count","null"],axis=1)
+    
+    #fichero CO2 
+    
+    #Valores Historicos
+    CO2H=pd.read_excel(pathCO2 + nameCO2H,header=0,skiprows=4)
+    
+    #Arreglamos el DataSet para dejarlo limpio
+    CO2H=CO2H.drop([0,1],axis=0)#Arreglo filas
+    
+    CO2H.rename(columns={'Mercado':'Fecha','ICE':'CO2101'},inplace=True)
+    CO2H = CO2H.dropna(subset=['Fecha'])
+    CO2H.Fecha = pd.to_datetime(CO2H.Fecha)
+    CO2H.CO2101= CO2H.CO2101.astype(float)
+    #CO2H = CO2H.apply(pd.to_numeric, errors='coerce')
+    CO2H = CO2H.groupby(pd.Grouper(key='Fecha', freq='MS')).mean() # groupby each 1 month
+    #CO2H["fecha1"]=CO2H.iloc[:,0]
+    CO2H.reset_index()
+    #Valores Futuros
+    CO2F=pd.read_excel(pathCO2 + nameCO2F,header=0,skiprows=4)
+    CO2F=CO2F.drop([0,1],axis=0)#Arreglo filas
+    CO2F.rename(columns={'Mercado':'Fecha','EUA CO2':'CO2101'},inplace=True)
+    CO2F = CO2F.dropna(subset=['Fecha'])
+    CO2F.Fecha = pd.to_datetime(CO2F.Fecha)
+    CO2F["CO2101"] = CO2F.CO2101.astype(float)
+    CO2F= CO2F.groupby(pd.Grouper(key='Fecha', freq='MS')).mean() # groupby each 1 month
+    CO2F["CO2101"]=CO2F.fillna(method='ffill')
+    CO2= pd.concat([CO2H,CO2F],axis=0, sort=False)
+    #test para ver si las matrices origen son cuadradas
+    row1 = CO2F.shape[0]
+    row2 = CO2H.shape[0]
+    row3= CO2.shape[0]
+    row3==row1+row2
+    if row3 == "False":
+        print ('Descuadre de CO2 :')
+    ############
+    CO2=pd.merge(CO2,INDEX2, on="Fecha", how="outer", sort=True)
+    CO2=CO2.reset_index()
+    ## Para quitar los duplicados
+    CO2["count"]=CO2.groupby(["Fecha"]).cumcount()
+    CO2=CO2[CO2["count"]==0]
+    CO2=CO2.drop(["count","index"],axis=1)
+    
+    #fichero Pool
+    # Valor PMA.
+    PoolH=pd.read_excel(pathPool + namePoolH,header=0,skiprows=6, usecols='A:Y')
+    PoolH.rename(columns={'Unnamed: 0':'Fecha'},inplace=True)
+    PoolH=PoolH.melt(id_vars=["Fecha"])
+    PoolH = PoolH.groupby(pd.Grouper(key='Fecha', freq='1MS')).mean() # groupby each 1 month start of month
+    PoolH=PoolH*10#para converger unidades
+    PoolH.rename(columns={'value':'PMS101'},inplace=True)
+    PoolH=PoolH.reset_index()
+    #Valores Futuros
+    PoolF=pd.read_excel(pathPool + namePoolF,header=1,skiprows=5,rows=65)
+    PoolF.rename(columns={'Unnamed: 0':'Fecha'},inplace=True)
+    PoolF = PoolF.dropna(subset=['Fecha'])
+    PoolF =PoolF.dropna(subset=['Fecha','Pool Compuesto'])
+    PoolF["Fecha"]=pd.to_datetime(PoolF["Fecha"], format='%Y%m%d')
+    PoolF.rename(columns={'PMS aritm base':'PMS101','Pool Compuesto':'null'},inplace=True)
+    PoolF["PMS101"] = PoolF["PMS101"].astype(float)
+    PoolF=PoolF.drop("null",axis=1)
+    
+    #Para eliminar los duplicados
+    Pool=pd.concat([PoolH,PoolF],axis=0, sort=False )
+    Pool['count']=Pool.groupby(["Fecha"]).cumcount()
+    Pool=Pool[Pool["count"]==0]    
+    Pool = Pool.drop(['count'], axis=1)
+    
+    #Pool= pd.concat([PoolH,PoolF],axis=0, sort=True)
+    #Pool=pd.concat([PoolH,PoolF]).drop_duplicates().reset_index(drop=True)
+    Pool=pd.merge(Pool,INDEX2, sort=True, on="Fecha", how="outer")
+    """
+    PDTE
+    los valores que dan desde balance no estan bien en el pool, se cargan de igual manera
+    """
+    
+    
+    salidaname=itera[j]+"BLCRAW"
+    #salida traemos los dataframe para montar la tabla de salida
+    dfs=[HUBS,PRD,FX,Pool,COAL]
+    
+    salida = reduce(lambda left,right: pd.merge(left,right,on='Fecha'), dfs)
+    #Para añadir la fecha en el dataset#Arreglamos las columnas y los valores
+    colsalida1=salida.columns
+    colsalida=[e for e in colsalida1 if (e != "Fecha") ]
+    salida.set_index("Fecha",inplace=True)
+    salida["mes"]=salida.index.month
+    salida["año"]=salida.index.year
+    salida["trimestre"]=salida.index.quarter
+    salida["FechaISO"]=HUBSISOF.iloc[0,0]
+    
+    for i in range(0, len(colsalida)):        
+        salida.loc[:,colsalida[i]]=salida.loc[:,colsalida[i]].apply(pd.to_numeric, errors='coerce')#formateo sin las fechas
+    #para poner la salida en primer lugar de la tabla 
+    cols=list(salida.columns.values)
+   #cols.insert(-1,"mes")
+   #cols.remove("Fecha")
+   #cols.insert(0,"Fecha")
+   #salida=salida.sort_values(by=["Fecha"])
+   
+    salida.to_excel (pathOUTPUT+salidaname+".xlsx", columns=cols,header=True)
+
+
