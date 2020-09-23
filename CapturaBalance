@@ -9,8 +9,8 @@ Barremos los ficheros incialmente y luego solo los que cambien por fecha desde l
 Para tener el ultimo disponible capturamos los valroes del repositorio sin fecha. son los ultimos a la fecha que se indica
 
 Pendiente
-se tienen que meter los valores de mercado de la unidad de red. barrer los datos de Eric
-traer la fecha en el fichero.
+Traer los valores de pool FWD
+Resolver nomre del fichero
 """
 
 # importacion de los ficheros de trabajo
@@ -22,8 +22,8 @@ from functools import reduce
 pathOUTPUT = 'C:/Users/00022254/OneDrive - GAS Natural Informática, S.A/00 Riesgos/04 Repositorio/'
 pathIndex='C:/Users/00022254/OneDrive - GAS Natural Informática, S.A/02 Programas/01 ProyectoPython/01 ObtenerDatosHojaGases/00 Master/'
 nameIndex='MasterBalance.xlsx'
-itera=['20200916']
-
+itera=['20200921']
+nameMCDF='21-sep-2020 07 32 .xlsx'
 
 #Creamos el fichero dummy para hacer la matriz de salida cuadrada
 INDEX2=pd.date_range("1992-01-01","2030-01-01",freq="MS")
@@ -59,8 +59,8 @@ for j in range(0,len(itera)):
     pathBrentICE='R:/HUBS/'
     nameBrentICE='BrentICE'+itera[j]+'.xls'
     nameBrentICE='BRENTH.xls'
-   
-
+    pathMCD='V:/GRNM/31. Riesgo de Mercado de Gas/Seguimiento Diario/Historico/'
+    
 
     # no hay el POWERH es el valor del pool'
     
@@ -110,9 +110,9 @@ for j in range(0,len(itera)):
     #Arreglamos el DataSet para dejarlo limpio
     #fichero HUBSH
     HUBSH=HUBSH.rename(
-            columns={'HH_PM_H':"NHH101", 'NBP_H':"NBP101", 'ZEE_H':"null", 'AGQ_H':"AGQ101", 'TNZ_H':"TNZ101", 'Unnamed: 6':"null",
+            columns={'HH_PM_H':"NHH101", 'NBP_H':"NBP101", 'ZEE_H':"ZEE101", 'AGQ_H':"AGQ101", 'TNZ_H':"TNZ101", 'Unnamed: 6':"null",
            'Unnamed: 7':"null", 'Unnamed: 8':"null", 'HH_CL_H':"NHH102", 'HH_L3D_H':"NHH103", 'NBP_LD':"null", 'TTF_H':"TTF101",
-           'JKM':"JKM101", 'NCG':"NCG101", 'ZEE_PM':"ZEE101", 'TTF_Q+1_113':"null", 'PSV_H':"PSV101", 'SWE':"null", 'PEG_H':"PEG101",
+           'JKM':"JKM101", 'NCG':"NCG101", 'ZEE_PM':"null", 'TTF_Q+1_113':"null", 'PSV_H':"PSV101", 'SWE':"null", 'PEG_H':"PEG101",
            'TTF_Gas Year':"null", 'NBP_PM':"null", 'NBP_ESGM':"NBP102",'NBP_ICE':"null", 'PVB_H':"PVB102", 'PVB_MIBGAS':"null",
            'ZEE_ESGM':"null"})
     HUBSH=HUBSH.drop(["null"],axis=1)#Arreglo columnas
@@ -351,15 +351,49 @@ for j in range(0,len(itera)):
     #Pool= pd.concat([PoolH,PoolF],axis=0, sort=True)
     #Pool=pd.concat([PoolH,PoolF]).drop_duplicates().reset_index(drop=True)
     Pool=pd.merge(Pool,INDEX2, sort=True, on="Fecha", how="outer")
-    """
-    PDTE
-    los valores que dan desde balance no estan bien en el pool, se cargan de igual manera
-    """
+    # Carga de Mercado
+ 
+    MCDF=pd.read_excel(pathMCD + nameMCDF,header=1,skiprows=1)
+    MCDF.rename(columns={'Mes':'Fecha','Q':"null","USD/EUR":"FXT001","USD/GBP":"FXT002","BRENT DATED":"BRT001","HH":"NHH001",
+                         "NBP":"NBP001","TTF":"TTF001","BRENT ICE":"BRT005","ZEE":"ZEE001","PEG":"PEG001",
+                         "JKM ($/mmBTU)":"JKM001","PVB (€/MWh)":"PVB002",
+                         "FO_1_CIF_MED":"CMD002","FO_3_5_CIF_MED":"CMD003","GO_0_1_CIF_MED":"CMD004",
+                         "GO_0_1_FOB_MED":"FMD004",	"FO_1_FOB_MED":"FMD002","FO_3_5_FOB_MED":"FMD003",
+                         "GO_0_1_CIF_NWE":"CNW004","FO_1_CIF_NWE":"CNW002","FO_3_5_CIF_NWE":"CNW003",
+                         "GO_0_1_FOB_ROTT":"FRT004","FO_1_FOB_ROTT":"FRT002","FO_3_5_FOB_ROTT":"FRT003",
+                         "CARBON_API2":"COA001","FO_1_FOB_NWE":"FNW002","FO_3_5_FOB_NWE":"FNW003" },inplace=True)
+    MCDF=MCDF.drop("null",axis=1)
+    
+    MCDH=pd.DataFrame()
+    MCDH1=PoolH.loc[:,['Fecha','PMS101']]
+    MCDH2=FXH.loc[:,['Fecha',"FXT101","FXT102"]]
+    MCDH3=HUBSH.loc[:,['Fecha',"NHH101","NBP101","TTF101","ZEE101","PEG101","JKM101","PVB102"]]
+    MCDH4=PRDH.loc[:,['Fecha',"CMD102","CMD103","CMD104","FMD104","FMD102","FMD103","CNW104","CNW102","CNW103",
+                   "FRT104","FRT102","FRT103","FNW102","FNW103",'BRT101']]
+    MCDH5=COALH.loc[:,['Fecha',"COA101"]]
+    listaMCDH=[MCDH1,MCDH2,MCDH3,MCDH4,MCDH5]
+    MCDH = reduce(lambda left,right: pd.merge(left,right,on='Fecha'), listaMCDH)
+    
+    MCDH.rename(columns={'PMS101':'PMS001',"FXT101":"FXT001","NHH101":"NHH001","FXT102":"FXT002",
+                         "NBP101":"NBP001","TTF101":"TTF001","ZEE101":"ZEE001","PEG101":"PEG001","JKM101":"JKM001",
+                         "PVB102":"PVB002","CMD102":"CMD002","CMD103":"CMD003","CMD104":"CMD004","FMD104":"FMD004",
+                         "FMD102":"FMD002","FMD103":"FMD003","CNW104":"CNW004","CNW102":"CNW002","CNW103":"CNW003",
+                         "FRT104":"FRT004","FRT102":"FRT002","FRT103":"FRT003","FNW102":"FNW002","FNW103":"FNW003",
+                         'BRT101':'BRT001',"COA101":"COA001"},inplace=True)
+    
+    
+    
+    
+    
+    MCD=pd.concat([MCDH,MCDF],axis=0, sort=False )
+    MCD['count']=MCD.groupby(["Fecha"]).cumcount()
+    MCD=MCD[MCD["count"]==0]    
+    MCD = MCD.drop(['count'], axis=1)
     
     
     salidaname=itera[j]+"BLCRAW"
     #salida traemos los dataframe para montar la tabla de salida
-    dfs=[HUBS,PRD,FX,Pool,COAL]
+    dfs=[HUBS,PRD,FX,Pool,COAL,MCD]
     
     salida = reduce(lambda left,right: pd.merge(left,right,on='Fecha'), dfs)
     #Para añadir la fecha en el dataset#Arreglamos las columnas y los valores
@@ -381,5 +415,4 @@ for j in range(0,len(itera)):
    #salida=salida.sort_values(by=["Fecha"])
    
     salida.to_excel (pathOUTPUT+salidaname+".xlsx", columns=cols,header=True)
-
 
